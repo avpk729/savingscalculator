@@ -1,0 +1,526 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SIP & SWP Calculator</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@3.0.1/dist/chartjs-plugin-annotation.min.js"></script>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 1200px; margin: 20px auto; padding: 20px; background: #f4f4f4; }
+        h1 { text-align: center; }
+        .container { display: flex; gap: 20px; }
+        .calculator { flex: 1; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
+        label { display: block; margin: 10px 0 5px; }
+        input { width: 100%; padding: 8px; box-sizing: border-box; }
+        button { width: 100%; padding: 10px; background: #4CAF50; color: white; border: none; cursor: pointer; margin-top: 20px; }
+        button:hover { background: #45a049; }
+        .result { margin-top: 20px; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+        th { background: #f2f2f2; }
+        .description { margin-bottom: 20px; color: #333; }
+        #selectors { text-align: center; margin-bottom: 20px; }
+        #selectors select, #selectors input { padding: 8px; width: auto; display: inline-block; margin: 0 10px; }
+        #withdrawalPv { font-style: italic; color: #666; margin-top: 5px; }
+        h2 { 
+            background-color: #4CAF50; 
+            color: white; 
+            padding: 10px; 
+            margin: -20px -20px 20px -20px; 
+            border-radius: 8px 8px 0 0; 
+            text-align: center; 
+        }
+    </style>
+</head>
+<body>
+    <h1>SIP & SWP Calculator</h1>
+    <div id="selectors">
+        <label for="currency">Select Currency:</label>
+        <select id="currency">
+            <option value="INR">INR (₹)</option>
+            <option value="USD">USD ($)</option>
+            <option value="SGD">SGD ($)</option>
+            <option value="AUD">AUD ($)</option>
+            <option value="GBP">GBP (£)</option>
+        </select>
+        <label for="inflation">Inflation Rate (%):</label>
+        <input type="number" id="inflation" value="5" min="0" step="0.01">
+    </div>
+    <div class="container">
+        <div class="calculator">
+            <h2>Systematic Investment Plan (SIP) Calculator</h2>
+            <div class="description">
+                <p>This calculator will help you plan your retirement savings for a working professional.</p>
+                <ul>
+                    <li>set a monthly investment amount</li>
+                    <li>estimate the duration you will be working and hence the number of years you would be saving.</li>
+                    <li>then enter the estimated growth rate of your investment based on fixed deposit rates or mutual fund rates.</li>
+                    <li>then press calculate to findout how much you would have in hand at the end of your working period or at your retirement.</li>
+                    <li>please note that due to inflation the final amount would have purchasing power less than its value, this will also be shown in the result below.</li>
+                </ul>
+            </div>
+            <form id="sipForm">
+                <label for="monthly">Monthly Investment:</label>
+                <input type="text" id="monthly" required>
+
+                <label for="years">Investment Duration (Years):</label>
+                <input type="number" id="years" min="1" required>
+
+                <label for="sipRate">Annual Growth Rate (%):</label>
+                <input type="number" id="sipRate" min="0" step="0.01" required>
+
+                <button type="submit">Calculate</button>
+            </form>
+            <div id="sipResult" class="result"></div>
+        </div>
+        <div class="calculator">
+            <h2>Systematic Withdrawal Plan (SWP) Calculator</h2>
+            <div class="description">
+                <p>this calculator will help you plan a systematic withdrawal fund based on your retirement savings for a working professional.</p>
+                <ul>
+                    <li>here, the default amount invested in your SWP would be the savings at the time of your retirement.</li>
+                    <li>then enter the monthly withdrawal amount you would like to have.</li>
+                    <li>remember that the purchasing power of the amounts at the time of your retirement would be much less than that at the starting time of your savings, this will also be shown here.</li>
+                    <li>then enter the growth rate for the retirement savings based on fixed deposit rates or mutual fund rates.</li>
+                    <li>results will show you for how long your savings will last.</li>
+                </ul>
+            </div>
+            <form id="swpForm">
+                <label for="principal">Initial Investment:</label>
+                <input type="text" id="principal" required>
+
+                <label for="withdrawal">Monthly Withdrawal:</label>
+                <input type="text" id="withdrawal" required>
+                <div id="withdrawalPv"></div>
+
+                <label for="rate">Annual Growth Rate (%):</label>
+                <input type="number" id="rate" min="0" step="0.01" required>
+
+                <button type="submit">Calculate</button>
+            </form>
+            <div id="swpResult" class="result"></div>
+        </div>
+    </div>
+    <div id="chartContainer" style="margin-top: 20px; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 0 10px rgba(0,0,0,0.1);">
+        <canvas id="timelineChart"></canvas>
+    </div>
+
+    <script>
+        let selectedCurrency = 'INR';
+        const currencySymbols = {
+            'INR': '₹',
+            'USD': '$',
+            'SGD': '$',
+            'AUD': '$',
+            'GBP': '£'
+        };
+        const locales = {
+            'INR': 'en-IN',
+            'USD': 'en-US',
+            'SGD': 'en-US',
+            'AUD': 'en-US',
+            'GBP': 'en-GB'
+        };
+
+        function getSymbol() {
+            return currencySymbols[selectedCurrency];
+        }
+
+        function getLocale() {
+            return locales[selectedCurrency];
+        }
+
+        function formatNumber(num, decimals = 2) {
+            const intNum = Math.floor(num);
+            if (num === intNum) {
+                return getSymbol() + ' ' + intNum.toLocaleString(getLocale()) + '/-';
+            } else {
+                return getSymbol() + ' ' + num.toLocaleString(getLocale(), {
+                    minimumFractionDigits: decimals,
+                    maximumFractionDigits: decimals
+                });
+            }
+        }
+
+        function getSummary(num) {
+            if (selectedCurrency === 'INR') {
+                if (num >= 10000000) {
+                    return ` (${(num / 10000000).toFixed(2)} crores)`;
+                } else if (num >= 100000) {
+                    return ` (${(num / 100000).toFixed(2)} lakhs)`;
+                }
+            } else {
+                if (num >= 1000000) {
+                    return ` (${(num / 1000000).toFixed(2)} millions)`;
+                }
+            }
+            return '';
+        }
+
+        function parseFormattedNumber(str) {
+            return parseFloat(str.replace(/[^0-9.]/g, ''));
+        }
+
+        function formatNumberInput(input) {
+            const oldValue = input.value;
+            const cursorPos = input.selectionStart;
+
+            // Clean the value
+            let value = input.value.replace(/[^0-9.]/g, '');
+            const parts = value.split('.');
+            const intPart = parts[0] || '0';
+            const decPart = parts.slice(1).join('').slice(0,2);
+            const cleanValue = intPart + (decPart ? '.' + decPart : '');
+
+            // Format
+            const num = Number(cleanValue);
+            const formatted = num.toLocaleString(getLocale(), {
+                minimumFractionDigits: decPart ? decPart.length : 0,
+                maximumFractionDigits: 2
+            });
+
+            // Calculate new cursor position
+            let oldCleanPos = 0;
+            for (let i = 0; i < cursorPos; i++) {
+                if (/[0-9.]/.test(oldValue[i])) oldCleanPos++;
+            }
+
+            let newCursorPos = 0;
+            let count = 0;
+            for (let char of formatted) {
+                if (/[0-9.]/.test(char)) {
+                    count++;
+                    newCursorPos++;
+                    if (count === oldCleanPos) break;
+                } else {
+                    newCursorPos++;
+                }
+            }
+            if (count < oldCleanPos) newCursorPos = formatted.length;
+
+            input.value = formatted;
+            input.setSelectionRange(newCursorPos, newCursorPos);
+        }
+
+        // Inputs
+        const monthlyInput = document.getElementById('monthly');
+        const principalInput = document.getElementById('principal');
+        const withdrawalInput = document.getElementById('withdrawal');
+
+        monthlyInput.addEventListener('input', () => formatNumberInput(monthlyInput));
+        principalInput.addEventListener('input', () => formatNumberInput(principalInput));
+        withdrawalInput.addEventListener('input', () => {
+            formatNumberInput(withdrawalInput);
+            updateWithdrawalPv();
+        });
+
+        // Currency change
+        document.getElementById('currency').addEventListener('change', function(e) {
+            selectedCurrency = e.target.value;
+            // Reformat existing inputs if they have values
+            if (monthlyInput.value) formatNumberInput(monthlyInput);
+            if (principalInput.value) formatNumberInput(principalInput);
+            if (withdrawalInput.value) formatNumberInput(withdrawalInput);
+            updateWithdrawalPv();
+        });
+
+        document.getElementById('inflation').addEventListener('input', updateWithdrawalPv);
+
+        let sipBalances = [];
+        let sipMonths = 0;
+        let sipYears = 0;
+        let chart;
+
+        function updateWithdrawalPv() {
+            const withdrawalValue = document.getElementById('withdrawal').value.replace(/[^0-9.]/g, '');
+            const W = parseFloat(withdrawalValue);
+            const inflation = parseFloat(document.getElementById('inflation').value) || 0;
+            const pvDiv = document.getElementById('withdrawalPv');
+            if (isNaN(W) || W <= 0 || sipYears === 0) {
+                pvDiv.innerHTML = sipYears === 0 ? 'Calculate SIP first for PV at SIP start.' : '';
+                return;
+            }
+            const pv = W / Math.pow(1 + inflation / 100, sipYears);
+            pvDiv.innerHTML = `Present Value at SIP Start: ${formatNumber(pv)}${getSummary(pv)}`;
+        }
+
+        // SIP Form Submit
+        document.getElementById('sipForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const monthlyValue = document.getElementById('monthly').value.replace(/[^0-9.]/g, '');
+            const years = parseInt(document.getElementById('years').value);
+            const rate = parseFloat(document.getElementById('sipRate').value);
+            const inflation = parseFloat(document.getElementById('inflation').value);
+            
+            if (isNaN(parseFloat(monthlyValue)) || isNaN(years) || isNaN(rate) || parseFloat(monthlyValue) <= 0 || years <= 0 || rate < 0 || inflation < 0) {
+                document.getElementById('sipResult').innerHTML = '<p style="color:red;">Please enter valid positive numbers.</p>';
+                return;
+            }
+            
+            sipYears = years;
+            const monthly = parseFloat(monthlyValue);
+            const months = years * 12;
+            let balance = 0;
+            sipBalances = [];
+            for (let m = 1; m <= months; m++) {
+                balance += monthly;
+                if (m % 12 === 0) {
+                    balance *= (1 + rate / 100);
+                }
+                sipBalances.push(balance);
+            }
+            sipMonths = months;
+            
+            const amountInvested = monthly * months;
+            const totalReturns = balance - amountInvested;
+            const finalValue = balance;
+            const pvFinal = finalValue / Math.pow(1 + inflation / 100, years);
+            
+            let resultHTML = '<p>Assuming annual compounding.</p>';
+            resultHTML += `<p>Amount Invested: ${formatNumber(amountInvested)}${getSummary(amountInvested)}</p>`;
+            resultHTML += `<p>Total Returns: ${formatNumber(totalReturns)}${getSummary(totalReturns)}</p>`;
+            resultHTML += `<p>Final Value: ${formatNumber(finalValue)}${getSummary(finalValue)} after ${years} years.</p>`;
+            resultHTML += `<p>Final Value in Present Terms (inflation-adjusted): ${formatNumber(pvFinal)}${getSummary(pvFinal)}</p>`;
+            
+            document.getElementById('sipResult').innerHTML = resultHTML;
+            
+            // Set default for SWP principal
+            const formattedFinal = finalValue.toLocaleString(getLocale(), { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+            principalInput.value = formattedFinal;
+            updateWithdrawalPv();
+        });
+
+        // SWP Form Submit
+        document.getElementById('swpForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const principalValue = document.getElementById('principal').value.replace(/[^0-9.]/g, '');
+            const withdrawalValue = document.getElementById('withdrawal').value.replace(/[^0-9.]/g, '');
+            const P = parseFloat(principalValue);
+            const W = parseFloat(withdrawalValue);
+            const R = parseFloat(document.getElementById('rate').value);
+            const inflation = parseFloat(document.getElementById('inflation').value);
+            
+            if (isNaN(P) || isNaN(W) || isNaN(R) || P <= 0 || W <= 0 || R < 0 || inflation < 0) {
+                document.getElementById('swpResult').innerHTML = '<p style="color:red;">Please enter valid positive numbers.</p>';
+                return;
+            }
+            
+            const r = R / 12 / 100; // Monthly growth rate
+            const i = inflation / 12 / 100; // Monthly inflation rate
+            let perpetual = false;
+            if (P * r >= W) {
+                perpetual = true;
+            } 
+            let swpBalances = [P];
+            let swpBalancesNpv = [P / Math.pow(1 + i, sipMonths)];
+            let currentBalance = P;
+            let calcMonths = 0;
+            if (perpetual) {
+                const maxM = 45 * 12;
+                for (let m = 1; m <= maxM; m++) {
+                    currentBalance += currentBalance * r;
+                    currentBalance -= W;
+                    swpBalances.push(currentBalance);
+                    swpBalancesNpv.push(currentBalance / Math.pow(1 + i, sipMonths + m));
+                }
+                calcMonths = maxM;
+            } else {
+                let month = 1;
+                while (calcMonths < 12000) {
+                    currentBalance += currentBalance * r;
+                    if (currentBalance < W) {
+                        break;
+                    }
+                    currentBalance -= W;
+                    swpBalances.push(currentBalance);
+                    swpBalancesNpv.push(currentBalance / Math.pow(1 + i, sipMonths + month));
+                    month++;
+                    calcMonths++;
+                }
+            }
+            
+            let resultHTML = '';
+            let intervals = [1];
+            if (perpetual) {
+                resultHTML += '<p>The investment will never exhaust as growth outpaces withdrawals.</p>';
+                intervals = intervals.concat([5, 10, 15, 20, 25, 30]);
+            } else {
+                const floor_years = Math.floor(calcMonths / 12);
+                const remainingMonths = calcMonths % 12;
+                resultHTML += '<p>The investment will exhaust after ' + calcMonths + ' months (' + floor_years + ' years and ' + remainingMonths + ' months).</p>';
+                const total_years = Math.ceil(calcMonths / 12);
+                for (let i = 5; i <= total_years; i += 5) {
+                    intervals.push(i);
+                }
+                if (total_years > 1 && !intervals.includes(total_years)) {
+                    intervals.push(total_years);
+                }
+            }
+
+            // Year 1 calculations for statement
+            let year1Balance = P;
+            let year1Withdrawn = 0;
+            let year1NpvWithdrawn = 0;
+            let year1NpvBalance = P / Math.pow(1 + i, sipMonths);
+            const year1Months = Math.min(12, calcMonths);
+            for (let m = 1; m <= year1Months; m++) {
+                year1Balance += year1Balance * r;
+                year1Balance -= W;
+                year1Withdrawn += W;
+                year1NpvWithdrawn += W / Math.pow(1 + i, sipMonths + m);
+            }
+            year1NpvBalance = year1Balance / Math.pow(1 + i, sipMonths + year1Months);
+
+            resultHTML += `<p>In the first year: Withdrawn ${formatNumber(year1Withdrawn)}${getSummary(year1Withdrawn)}, Balance ${formatNumber(year1Balance)}${getSummary(year1Balance)}.</p>`;
+            resultHTML += `<p>In the first year (NPV at SIP Start): Withdrawn ${formatNumber(year1NpvWithdrawn)}${getSummary(year1NpvWithdrawn)}, Balance ${formatNumber(year1NpvBalance)}${getSummary(year1NpvBalance)}.</p>`;
+
+            // Nominal Table
+            if (intervals.length > 0) {
+                resultHTML += '<h3>Nominal Values</h3>';
+                resultHTML += '<table><tr><th>After Years</th><th>Cumulative Withdrawn</th><th>Balance</th></tr>';
+                intervals.forEach(function(years) {
+                    const numMonths = perpetual ? years * 12 : Math.min(years * 12, calcMonths);
+                    let tempBalance = P;
+                    let totalWithdrawn = 0;
+                    for (let m = 0; m < numMonths; m++) {
+                        tempBalance += tempBalance * r;
+                        tempBalance -= W;
+                        totalWithdrawn += W;
+                    }
+                    resultHTML += `<tr><td>${years}</td><td>${formatNumber(totalWithdrawn)}${getSummary(totalWithdrawn)}</td><td>${formatNumber(tempBalance)}${getSummary(tempBalance)}</td></tr>`;
+                });
+                resultHTML += '</table>';
+            }
+
+            // NPV Table
+            if (intervals.length > 0) {
+                resultHTML += '<h3>NPV at SIP Start</h3>';
+                resultHTML += '<table><tr><th>After Years</th><th>Cumulative Withdrawn</th><th>Balance</th></tr>';
+                intervals.forEach(function(years) {
+                    const numMonths = perpetual ? years * 12 : Math.min(years * 12, calcMonths);
+                    let tempBalance = P;
+                    let totalWithdrawn = 0;
+                    let npvCumWithdrawn = 0;
+                    for (let m = 1; m <= numMonths; m++) {
+                        tempBalance += tempBalance * r;
+                        tempBalance -= W;
+                        totalWithdrawn += W;
+                        npvCumWithdrawn += W / Math.pow(1 + i, sipMonths + m);
+                    }
+                    const npvBalance = tempBalance / Math.pow(1 + i, sipMonths + numMonths);
+                    resultHTML += `<tr><td>${years}</td><td>${formatNumber(npvCumWithdrawn)}${getSummary(npvCumWithdrawn)}</td><td>${formatNumber(npvBalance)}${getSummary(npvBalance)}</td></tr>`;
+                });
+                resultHTML += '</table>';
+            }
+            
+            document.getElementById('swpResult').innerHTML = resultHTML;
+
+            updateChart(sipBalances, sipMonths, swpBalances, swpBalancesNpv, selectedCurrency, perpetual);
+        });
+
+        function updateChart(sipBalances, sipMonths, swpBalances, swpBalancesNpv, selectedCurrency, perpetual) {
+            const ctx = document.getElementById('timelineChart').getContext('2d');
+            if (chart) chart.destroy();
+
+            let dataPointsNominal = [];
+            let dataPointsNpv = [];
+            let offset = 0;
+            let sipYearsLocal = sipMonths / 12;
+            const hasSip = sipBalances.length > 0;
+            const i = parseFloat(document.getElementById('inflation').value) / 12 / 100 || 0;
+            if (hasSip) {
+                dataPointsNominal.push({x: 0, y: 0});
+                dataPointsNpv.push({x: 0, y: 0});
+                for (let m = 0; m < sipBalances.length; m++) {
+                    dataPointsNominal.push({x: (m + 1) / 12, y: sipBalances[m]});
+                    dataPointsNpv.push({x: (m + 1) / 12, y: sipBalances[m] / Math.pow(1 + i, m + 1)});
+                }
+                offset = sipYearsLocal;
+            }
+            const swpLength = swpBalances.length;
+            for (let m = 0; m < swpLength; m++) {
+                dataPointsNominal.push({x: offset + m / 12, y: swpBalances[m]});
+                dataPointsNpv.push({x: offset + m / 12, y: swpBalancesNpv[m]});
+            }
+
+            const totalYears = offset + (swpLength - 1) / 12;
+            const maxBalance = Math.max(...dataPointsNominal.map(p => p.y), ...dataPointsNpv.map(p => p.y));
+            let yMax = maxBalance * 1.1;
+            const minScale = selectedCurrency === 'INR' ? 10000000 : 1000000;
+            if (yMax < minScale) yMax = minScale;
+
+            let annos = {};
+            for (let i = 5; i <= totalYears; i += 5) {
+                annos[`line${i}`] = {
+                    type: 'line',
+                    xMin: i,
+                    xMax: i,
+                    borderColor: 'rgba(0, 0, 0, 0.2)',
+                    borderWidth: 1,
+                    borderDash: [5, 5]
+                };
+            }
+            if (hasSip) {
+                annos['swpStart'] = {
+                    type: 'line',
+                    xMin: sipYearsLocal,
+                    xMax: sipYearsLocal,
+                    borderColor: 'rgba(255, 99, 132, 0.5)',
+                    borderWidth: 2,
+                    borderDash: [10, 5],
+                    label: {
+                        display: true,
+                        content: 'SWP Start',
+                        position: 'top'
+                    }
+                };
+            }
+
+            chart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    datasets: [{
+                        label: 'Corpus Over Time (Nominal)',
+                        data: dataPointsNominal,
+                        borderColor: 'rgb(75, 192, 192)',
+                        backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                        fill: false,
+                        tension: 0.1
+                    },
+                    {
+                        label: 'Corpus Over Time (NPV at SIP Start)',
+                        data: dataPointsNpv,
+                        borderColor: 'rgb(153, 102, 255)',
+                        backgroundColor: 'rgba(153, 102, 255, 0.2)',
+                        fill: false,
+                        tension: 0.1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    scales: {
+                        x: {
+                            type: 'linear',
+                            title: { display: true, text: 'Years' },
+                            min: 0,
+                            max: Math.ceil(totalYears) + 1,
+                            ticks: { stepSize: 1 }
+                        },
+                        y: {
+                            title: { display: true, text: `Balance (${selectedCurrency})` },
+                            min: 0,
+                            max: yMax
+                        }
+                    },
+                    plugins: {
+                        annotation: {
+                            annotations: annos
+                        }
+                    }
+                }
+            });
+        }
+    </script>
+</body>
+</html>
