@@ -3,46 +3,71 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Value Converter – INR Crores ↔ USD / AUD / SGD Millions</title>
+    <title>Value Converter – INR Crores ↔ USD / AUD / SGD / GBP Millions</title>
     <style>
+        * { box-sizing: border-box; }
         body { font-family: Arial, sans-serif; max-width: 1200px; margin: 20px auto; padding: 20px; background: #f4f4f4; }
-        h1 { text-align: center; }
+        h1 { text-align: center; margin-bottom: 6px; }
+        .subtitle { text-align: center; color: #555; margin-bottom: 16px; font-size: 14px; }
+
+        /* ── Nav ── */
         nav { background: #4CAF50; padding: 12px 20px; text-align: center; margin-bottom: 24px; border-radius: 8px; }
         nav a { color: white; text-decoration: none; margin: 0 16px; font-weight: bold; font-size: 15px; }
         nav a:hover { text-decoration: underline; }
         nav a.active { border-bottom: 2px solid white; padding-bottom: 2px; }
-        .container { display: flex; gap: 20px; }
-        .calculator { flex: 1; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
-        h2 { background-color: #4CAF50; color: white; padding: 10px; margin: -20px -20px 20px -20px; border-radius: 8px 8px 0 0; text-align: center; }
-        label { display: block; margin: 10px 0 5px; }
-        input, select { width: 100%; padding: 8px; box-sizing: border-box; border: 1px solid #ccc; border-radius: 4px; }
-        button { width: 100%; padding: 10px; background: #4CAF50; color: white; border: none; cursor: pointer; margin-top: 20px; border-radius: 4px; font-size: 15px; }
-        button:hover { background: #45a049; }
-        .description { margin-bottom: 20px; color: #333; }
-        .input-row { display: flex; gap: 8px; }
-        .input-row input { flex: 2; }
-        .input-row select { flex: 1; width: auto; }
 
-        /* Rates bar */
-        #ratesBar { background: white; padding: 14px 20px; border-radius: 8px; box-shadow: 0 0 10px rgba(0,0,0,0.1); margin-bottom: 20px; text-align: center; }
-        .rate-badge { display: inline-block; margin: 0 14px; color: #333; font-size: 14px; }
+        /* ── Rates bar ── */
+        #ratesBar { background: white; padding: 12px 16px; border-radius: 8px; box-shadow: 0 0 10px rgba(0,0,0,0.1); margin-bottom: 20px; text-align: center; }
+        #ratesText { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px 16px; align-items: center; }
+        .rate-badge { color: #333; font-size: 14px; white-space: nowrap; }
         .rate-badge b { color: #4CAF50; }
 
-        /* INR → Foreign result grid */
-        .result-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-top: 14px; }
-        .result-card { background: #f9f9f9; border: 1px solid #e0e0e0; border-radius: 6px; padding: 14px; text-align: center; }
-        .result-card .cur-label { font-size: 12px; color: #888; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px; }
-        .result-card .val-millions { font-size: 20px; font-weight: bold; color: #4CAF50; }
-        .result-card .val-billions { font-size: 13px; color: #777; margin-top: 4px; }
+        /* ── Tab bar (mobile only) ── */
+        .tab-bar { display: none; margin-bottom: 16px; border-radius: 8px; overflow: hidden; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
+        .tab-btn { flex: 1; padding: 12px 8px; background: #e8e8e8; border: none; cursor: pointer; font-size: 14px; font-weight: bold; color: #555; transition: background 0.2s, color 0.2s; }
+        .tab-btn.active { background: #4CAF50; color: white; }
 
-        /* Foreign → INR result box */
+        /* ── Calculators layout ── */
+        .container { display: flex; gap: 20px; }
+        .calculator { flex: 1; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
+        h2 { background-color: #4CAF50; color: white; padding: 10px; margin: -20px -20px 20px -20px; border-radius: 8px 8px 0 0; text-align: center; font-size: 16px; }
+        label { display: block; margin: 10px 0 5px; }
+        input, select { width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; font-size: 15px; }
+        button[type="submit"] { width: 100%; padding: 12px; background: #4CAF50; color: white; border: none; cursor: pointer; margin-top: 20px; border-radius: 4px; font-size: 15px; }
+        button[type="submit"]:hover { background: #45a049; }
+        .description { margin-bottom: 20px; color: #333; font-size: 14px; }
+        .hint { font-size: 12px; color: #888; margin-top: 4px; }
+        .input-row { display: flex; gap: 8px; }
+        .input-row input { flex: 2; }
+        .input-row select { flex: 1; }
+
+        /* ── INR→Foreign result grid: 4-col desktop, 2-col mobile ── */
+        .result-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-top: 14px; }
+        .result-card { background: #f9f9f9; border: 1px solid #e0e0e0; border-radius: 6px; padding: 12px 8px; text-align: center; }
+        .result-card .cur-label { font-size: 11px; color: #888; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px; }
+        .result-card .val-millions { font-size: 17px; font-weight: bold; color: #4CAF50; }
+        .result-card .val-billions { font-size: 12px; color: #777; margin-top: 4px; }
+
+        /* ── Foreign→INR result box ── */
         .result-box { background: #f0faf0; border: 2px solid #4CAF50; border-radius: 8px; padding: 20px; text-align: center; margin-top: 16px; }
         .result-box .box-label { font-size: 14px; color: #666; }
-        .result-box .box-crores { font-size: 30px; font-weight: bold; color: #4CAF50; margin: 8px 0 4px; }
+        .result-box .box-crores { font-size: 28px; font-weight: bold; color: #4CAF50; margin: 8px 0 4px; }
         .result-box .box-sub { font-size: 14px; color: #777; }
 
         .summary-line { margin-top: 14px; font-size: 14px; color: #555; }
-        .err { color: red; margin-top: 12px; }
+        .err { color: red; margin-top: 12px; font-size: 14px; }
+
+        /* ── Mobile overrides ── */
+        @media (max-width: 700px) {
+            body { padding: 12px; margin: 0; }
+            h1 { font-size: 22px; }
+            .tab-bar { display: flex; }
+            .container { flex-direction: column; gap: 0; }
+            .calculator { display: none; border-radius: 8px; }
+            .calculator.tab-active { display: block; }
+            .result-grid { grid-template-columns: repeat(2, 1fr); }
+            h2 { font-size: 15px; }
+        }
     </style>
     <!-- Google tag (gtag.js) -->
     <script async src="https://www.googletagmanager.com/gtag/js?id=G-9S9PCLH99P"></script>
@@ -60,18 +85,24 @@
     </nav>
 
     <h1>Value Converter</h1>
-    <p style="text-align:center;color:#555;margin-bottom:16px;">Convert between INR Crores and USD / AUD / SGD Millions &amp; Billions using live exchange rates.</p>
+    <p class="subtitle">Convert between INR Crores and USD / AUD / SGD / GBP Millions &amp; Billions using live exchange rates.</p>
 
     <div id="ratesBar"><span id="ratesText">Loading live exchange rates…</span></div>
+
+    <!-- Tab bar — visible on mobile only -->
+    <div class="tab-bar">
+        <button class="tab-btn active" onclick="switchTab(0)">INR Crores → Foreign</button>
+        <button class="tab-btn" onclick="switchTab(1)">Foreign → INR Crores</button>
+    </div>
 
     <div class="container">
 
         <!-- Card 1: INR Crores → Foreign -->
-        <div class="calculator">
-            <h2>INR Crores → USD / AUD / SGD</h2>
+        <div class="calculator tab-active" id="card-inr-to-foreign">
+            <h2>INR Crores → USD / AUD / SGD / GBP</h2>
             <div class="description">
-                <p>Enter an amount in Indian Rupees (Crores) to see the equivalent in US Dollars, Australian Dollars, and Singapore Dollars — shown in both Millions and Billions.</p>
-                <p style="font-size:13px;color:#777;">1 Crore = 10 Million &nbsp;|&nbsp; 1 Crore = 0.01 Billion</p>
+                <p>Enter an amount in Indian Rupees (Crores) to see the equivalent in US Dollars, Australian Dollars, Singapore Dollars, and British Pounds — shown in Millions and Billions.</p>
+                <p class="hint">1 Crore = 10 Million &nbsp;|&nbsp; 1 Crore = 0.01 Billion</p>
             </div>
             <form id="inrToForeignForm">
                 <label for="inrCrores">Amount in INR (Crores):</label>
@@ -82,11 +113,11 @@
         </div>
 
         <!-- Card 2: Foreign → INR Crores -->
-        <div class="calculator">
-            <h2>USD / AUD / SGD → INR Crores</h2>
+        <div class="calculator" id="card-foreign-to-inr">
+            <h2>USD / AUD / SGD / GBP → INR Crores</h2>
             <div class="description">
-                <p>Enter an amount in USD, AUD, or SGD (in Millions or Billions) to see the equivalent in Indian Rupees (Crores).</p>
-                <p style="font-size:13px;color:#777;">1 Million = 0.1 Crore &nbsp;|&nbsp; 1 Billion = 100 Crores</p>
+                <p>Enter an amount in USD, AUD, SGD, or GBP (in Millions or Billions) to see the equivalent in Indian Rupees (Crores).</p>
+                <p class="hint">1 Million = 0.1 Crore &nbsp;|&nbsp; 1 Billion = 100 Crores</p>
             </div>
             <form id="foreignToInrForm">
                 <label>Amount &amp; Unit:</label>
@@ -102,6 +133,7 @@
                     <option value="USD">USD – US Dollar</option>
                     <option value="AUD">AUD – Australian Dollar</option>
                     <option value="SGD">SGD – Singapore Dollar</option>
+                    <option value="GBP">GBP – British Pound</option>
                 </select>
                 <button type="submit">Convert</button>
             </form>
@@ -111,7 +143,17 @@
     </div>
 
     <script>
-        // rates: keyed by currency code, value = units of that currency per 1 INR
+        // Tab switching (mobile only)
+        const cards = [
+            document.getElementById('card-inr-to-foreign'),
+            document.getElementById('card-foreign-to-inr')
+        ];
+        function switchTab(idx) {
+            cards.forEach((c, i) => c.classList.toggle('tab-active', i === idx));
+            document.querySelectorAll('.tab-btn').forEach((b, i) => b.classList.toggle('active', i === idx));
+        }
+
+        // Exchange rates (base INR): rates[X] = units of X per 1 INR
         let rates = null;
         let ratesDate = null;
 
@@ -126,30 +168,30 @@
                     throw new Error('bad response');
                 }
             } catch (_) {
-                // Approximate fallback rates (1 INR = X foreign) — updated periodically
-                rates = { USD: 0.01188, AUD: 0.01900, SGD: 0.01595 };
+                rates = { USD: 0.01188, AUD: 0.01900, SGD: 0.01595, GBP: 0.00935 };
                 ratesDate = null;
             }
             renderRatesBar();
         }
 
         function renderRatesBar() {
-            const currencies = [
-                { code: 'USD', label: 'USD' },
-                { code: 'AUD', label: 'AUD' },
-                { code: 'SGD', label: 'SGD' },
-            ];
-            const badges = currencies.map(({ code, label }) => {
+            const currencies = ['USD', 'AUD', 'SGD', 'GBP'];
+            const badges = currencies.map(code => {
                 const inrPer = (1 / rates[code]).toFixed(2);
-                return `<span class="rate-badge">1 ${label} = <b>₹${inrPer}</b></span>`;
+                return `<span class="rate-badge">1 ${code} = <b>₹${inrPer}</b></span>`;
             }).join('');
             const note = ratesDate
-                ? `<span style="color:#aaa;font-size:12px;margin-left:12px;">Updated ${new Date(ratesDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</span>`
-                : `<span style="color:#e07b00;font-size:12px;margin-left:12px;">⚠ Using approximate rates (live fetch failed)</span>`;
+                ? `<span style="color:#aaa;font-size:12px;">Updated ${new Date(ratesDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</span>`
+                : `<span style="color:#e07b00;font-size:12px;">⚠ Approximate rates (live fetch failed)</span>`;
             document.getElementById('ratesText').innerHTML = badges + note;
         }
 
-        const curNames = { USD: 'US Dollar', AUD: 'Australian Dollar', SGD: 'Singapore Dollar' };
+        const curNames = {
+            USD: 'US Dollar',
+            AUD: 'Australian Dollar',
+            SGD: 'Singapore Dollar',
+            GBP: 'British Pound'
+        };
 
         // INR Crores → Foreign
         document.getElementById('inrToForeignForm').addEventListener('submit', function (e) {
@@ -164,14 +206,13 @@
             }
 
             const inrRaw = crores * 1e7;
-
-            const cards = ['USD', 'AUD', 'SGD'].map(cur => {
+            const cards = ['USD', 'AUD', 'SGD', 'GBP'].map(cur => {
                 const foreignRaw = inrRaw * rates[cur];
                 const millions = foreignRaw / 1e6;
                 const billions = foreignRaw / 1e9;
                 return `
                     <div class="result-card">
-                        <div class="cur-label">${curNames[cur]} (${cur})</div>
+                        <div class="cur-label">${curNames[cur]}<br>(${cur})</div>
                         <div class="val-millions">${millions.toLocaleString('en-US', { maximumFractionDigits: 3 })} M</div>
                         <div class="val-billions">${billions.toLocaleString('en-US', { maximumFractionDigits: 6 })} B</div>
                     </div>`;
