@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Value Converter – INR Crores ↔ USD / AUD / SGD Millions</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 1200px; margin: 20px auto; padding: 20px; background: #f4f4f4; }
+        h1 { text-align: center; }
+        nav { background: #4CAF50; padding: 12px 20px; text-align: center; margin-bottom: 24px; border-radius: 8px; }
+        nav a { color: white; text-decoration: none; margin: 0 16px; font-weight: bold; font-size: 15px; }
+        nav a:hover { text-decoration: underline; }
+        nav a.active { border-bottom: 2px solid white; padding-bottom: 2px; }
+        .container { display: flex; gap: 20px; }
+        .calculator { flex: 1; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
+        h2 { background-color: #4CAF50; color: white; padding: 10px; margin: -20px -20px 20px -20px; border-radius: 8px 8px 0 0; text-align: center; }
+        label { display: block; margin: 10px 0 5px; }
+        input, select { width: 100%; padding: 8px; box-sizing: border-box; border: 1px solid #ccc; border-radius: 4px; }
+        button { width: 100%; padding: 10px; background: #4CAF50; color: white; border: none; cursor: pointer; margin-top: 20px; border-radius: 4px; font-size: 15px; }
+        button:hover { background: #45a049; }
+        .description { margin-bottom: 20px; color: #333; }
+        .input-row { display: flex; gap: 8px; }
+        .input-row input { flex: 2; }
+        .input-row select { flex: 1; width: auto; }
+
+        /* Rates bar */
+        #ratesBar { background: white; padding: 14px 20px; border-radius: 8px; box-shadow: 0 0 10px rgba(0,0,0,0.1); margin-bottom: 20px; text-align: center; }
+        .rate-badge { display: inline-block; margin: 0 14px; color: #333; font-size: 14px; }
+        .rate-badge b { color: #4CAF50; }
+
+        /* INR → Foreign result grid */
+        .result-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-top: 14px; }
+        .result-card { background: #f9f9f9; border: 1px solid #e0e0e0; border-radius: 6px; padding: 14px; text-align: center; }
+        .result-card .cur-label { font-size: 12px; color: #888; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px; }
+        .result-card .val-millions { font-size: 20px; font-weight: bold; color: #4CAF50; }
+        .result-card .val-billions { font-size: 13px; color: #777; margin-top: 4px; }
+
+        /* Foreign → INR result box */
+        .result-box { background: #f0faf0; border: 2px solid #4CAF50; border-radius: 8px; padding: 20px; text-align: center; margin-top: 16px; }
+        .result-box .box-label { font-size: 14px; color: #666; }
+        .result-box .box-crores { font-size: 30px; font-weight: bold; color: #4CAF50; margin: 8px 0 4px; }
+        .result-box .box-sub { font-size: 14px; color: #777; }
+
+        .summary-line { margin-top: 14px; font-size: 14px; color: #555; }
+        .err { color: red; margin-top: 12px; }
+    </style>
+    <!-- Google tag (gtag.js) -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-9S9PCLH99P"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+      gtag('config', 'G-9S9PCLH99P');
+    </script>
+</head>
+<body>
+    <nav>
+        <a href="index.html">SIP &amp; SWP Calculator</a>
+        <a href="value-converter.html" class="active">Value Converter</a>
+    </nav>
+
+    <h1>Value Converter</h1>
+    <p style="text-align:center;color:#555;margin-bottom:16px;">Convert between INR Crores and USD / AUD / SGD Millions &amp; Billions using live exchange rates.</p>
+
+    <div id="ratesBar"><span id="ratesText">Loading live exchange rates…</span></div>
+
+    <div class="container">
+
+        <!-- Card 1: INR Crores → Foreign -->
+        <div class="calculator">
+            <h2>INR Crores → USD / AUD / SGD</h2>
+            <div class="description">
+                <p>Enter an amount in Indian Rupees (Crores) to see the equivalent in US Dollars, Australian Dollars, and Singapore Dollars — shown in both Millions and Billions.</p>
+                <p style="font-size:13px;color:#777;">1 Crore = 10 Million &nbsp;|&nbsp; 1 Crore = 0.01 Billion</p>
+            </div>
+            <form id="inrToForeignForm">
+                <label for="inrCrores">Amount in INR (Crores):</label>
+                <input type="number" id="inrCrores" min="0" step="any" placeholder="e.g. 100" required>
+                <button type="submit">Convert</button>
+            </form>
+            <div id="inrToForeignResult"></div>
+        </div>
+
+        <!-- Card 2: Foreign → INR Crores -->
+        <div class="calculator">
+            <h2>USD / AUD / SGD → INR Crores</h2>
+            <div class="description">
+                <p>Enter an amount in USD, AUD, or SGD (in Millions or Billions) to see the equivalent in Indian Rupees (Crores).</p>
+                <p style="font-size:13px;color:#777;">1 Million = 0.1 Crore &nbsp;|&nbsp; 1 Billion = 100 Crores</p>
+            </div>
+            <form id="foreignToInrForm">
+                <label>Amount &amp; Unit:</label>
+                <div class="input-row">
+                    <input type="number" id="foreignAmount" min="0" step="any" placeholder="e.g. 10" required>
+                    <select id="foreignUnit">
+                        <option value="million">Million</option>
+                        <option value="billion">Billion</option>
+                    </select>
+                </div>
+                <label for="foreignCurrency">Currency:</label>
+                <select id="foreignCurrency">
+                    <option value="USD">USD – US Dollar</option>
+                    <option value="AUD">AUD – Australian Dollar</option>
+                    <option value="SGD">SGD – Singapore Dollar</option>
+                </select>
+                <button type="submit">Convert</button>
+            </form>
+            <div id="foreignToInrResult"></div>
+        </div>
+
+    </div>
+
+    <script>
+        // rates: keyed by currency code, value = units of that currency per 1 INR
+        let rates = null;
+        let ratesDate = null;
+
+        async function fetchRates() {
+            try {
+                const res = await fetch('https://open.er-api.com/v6/latest/INR');
+                const data = await res.json();
+                if (data.result === 'success') {
+                    rates = data.rates;
+                    ratesDate = data.time_last_update_utc || null;
+                } else {
+                    throw new Error('bad response');
+                }
+            } catch (_) {
+                // Approximate fallback rates (1 INR = X foreign) — updated periodically
+                rates = { USD: 0.01188, AUD: 0.01900, SGD: 0.01595 };
+                ratesDate = null;
+            }
+            renderRatesBar();
+        }
+
+        function renderRatesBar() {
+            const currencies = [
+                { code: 'USD', label: 'USD' },
+                { code: 'AUD', label: 'AUD' },
+                { code: 'SGD', label: 'SGD' },
+            ];
+            const badges = currencies.map(({ code, label }) => {
+                const inrPer = (1 / rates[code]).toFixed(2);
+                return `<span class="rate-badge">1 ${label} = <b>₹${inrPer}</b></span>`;
+            }).join('');
+            const note = ratesDate
+                ? `<span style="color:#aaa;font-size:12px;margin-left:12px;">Updated ${new Date(ratesDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</span>`
+                : `<span style="color:#e07b00;font-size:12px;margin-left:12px;">⚠ Using approximate rates (live fetch failed)</span>`;
+            document.getElementById('ratesText').innerHTML = badges + note;
+        }
+
+        const curNames = { USD: 'US Dollar', AUD: 'Australian Dollar', SGD: 'Singapore Dollar' };
+
+        // INR Crores → Foreign
+        document.getElementById('inrToForeignForm').addEventListener('submit', function (e) {
+            e.preventDefault();
+            const resultEl = document.getElementById('inrToForeignResult');
+            if (!rates) { resultEl.innerHTML = '<p class="err">Rates not loaded yet — please wait a moment.</p>'; return; }
+
+            const crores = parseFloat(document.getElementById('inrCrores').value);
+            if (isNaN(crores) || crores <= 0) {
+                resultEl.innerHTML = '<p class="err">Please enter a valid positive number.</p>';
+                return;
+            }
+
+            const inrRaw = crores * 1e7;
+
+            const cards = ['USD', 'AUD', 'SGD'].map(cur => {
+                const foreignRaw = inrRaw * rates[cur];
+                const millions = foreignRaw / 1e6;
+                const billions = foreignRaw / 1e9;
+                return `
+                    <div class="result-card">
+                        <div class="cur-label">${curNames[cur]} (${cur})</div>
+                        <div class="val-millions">${millions.toLocaleString('en-US', { maximumFractionDigits: 3 })} M</div>
+                        <div class="val-billions">${billions.toLocaleString('en-US', { maximumFractionDigits: 6 })} B</div>
+                    </div>`;
+            }).join('');
+
+            resultEl.innerHTML = `
+                <p class="summary-line">₹ ${crores.toLocaleString('en-IN')} Crore${crores !== 1 ? 's' : ''} equals:</p>
+                <div class="result-grid">${cards}</div>`;
+        });
+
+        // Foreign → INR Crores
+        document.getElementById('foreignToInrForm').addEventListener('submit', function (e) {
+            e.preventDefault();
+            const resultEl = document.getElementById('foreignToInrResult');
+            if (!rates) { resultEl.innerHTML = '<p class="err">Rates not loaded yet — please wait a moment.</p>'; return; }
+
+            const amount = parseFloat(document.getElementById('foreignAmount').value);
+            const unit = document.getElementById('foreignUnit').value;
+            const currency = document.getElementById('foreignCurrency').value;
+
+            if (isNaN(amount) || amount <= 0) {
+                resultEl.innerHTML = '<p class="err">Please enter a valid positive number.</p>';
+                return;
+            }
+
+            const multiplier = unit === 'million' ? 1e6 : 1e9;
+            const foreignRaw = amount * multiplier;
+            const inrRaw = foreignRaw / rates[currency];
+            const crores = inrRaw / 1e7;
+            const lakhs = inrRaw / 1e5;
+
+            const unitLabel = unit === 'million' ? 'Million' : 'Billion';
+            const unitLabelPlural = amount !== 1 ? unitLabel + 's' : unitLabel;
+
+            resultEl.innerHTML = `
+                <div class="result-box">
+                    <div class="box-label">${amount.toLocaleString('en-US')} ${currency} ${unitLabelPlural} =</div>
+                    <div class="box-crores">₹ ${crores.toLocaleString('en-IN', { maximumFractionDigits: 2 })} Crores</div>
+                    <div class="box-sub">(₹ ${lakhs.toLocaleString('en-IN', { maximumFractionDigits: 2 })} Lakhs)</div>
+                    <div class="box-sub" style="margin-top:6px;font-size:12px;color:#bbb;">
+                        Raw: ₹ ${Math.round(inrRaw).toLocaleString('en-IN')}
+                    </div>
+                </div>`;
+        });
+
+        fetchRates();
+    </script>
+</body>
+</html>

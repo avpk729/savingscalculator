@@ -32,6 +32,12 @@
             text-align: center; 
         }
     </style>
+    <style>
+        nav { background: #4CAF50; padding: 12px 20px; text-align: center; margin-bottom: 24px; border-radius: 8px; }
+        nav a { color: white; text-decoration: none; margin: 0 16px; font-weight: bold; font-size: 15px; }
+        nav a:hover { text-decoration: underline; }
+        nav a.active { border-bottom: 2px solid white; padding-bottom: 2px; }
+    </style>
     <!-- Google tag (gtag.js) -->
 <script async src="https://www.googletagmanager.com/gtag/js?id=G-9S9PCLH99P"></script>
 <script>
@@ -43,6 +49,10 @@
 </script>
 </head>
 <body>
+    <nav>
+        <a href="index.html" class="active">SIP &amp; SWP Calculator</a>
+        <a href="value-converter.html">Value Converter</a>
+    </nav>
     <h1>SIP & SWP Calculator</h1>
     <div id="selectors">
         <label for="currency">Select Currency:</label>
