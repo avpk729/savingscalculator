@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Value Converter – INR Crores ↔ USD / AUD / SGD / GBP Millions</title>
+    <title>Value Converter – INR Crores / Millions / Billions ↔ USD / AUD / SGD / GBP</title>
     <style>
         * { box-sizing: border-box; }
         body { font-family: Arial, sans-serif; max-width: 1200px; margin: 20px auto; padding: 20px; background: #f4f4f4; }
@@ -85,7 +85,7 @@
     </nav>
 
     <h1>Value Converter</h1>
-    <p class="subtitle">Convert between INR Crores and USD / AUD / SGD / GBP Millions &amp; Billions using live exchange rates.</p>
+    <p class="subtitle">Convert between INR Crores, Millions, Billions &amp; Trillions and USD / AUD / SGD / GBP using live exchange rates.</p>
 
     <div id="ratesBar"><span id="ratesText">Loading live exchange rates…</span></div>
 
@@ -93,6 +93,7 @@
     <div class="tab-bar">
         <button class="tab-btn active" onclick="switchTab(0)">INR Crores → Foreign</button>
         <button class="tab-btn" onclick="switchTab(1)">Foreign → INR Crores</button>
+        <button class="tab-btn" onclick="switchTab(2)">INR M/B/T → Crores + Foreign</button>
     </div>
 
     <div class="container">
@@ -140,13 +141,36 @@
             <div id="foreignToInrResult"></div>
         </div>
 
+        <!-- Card 3: INR M/B/T → INR Crores + Foreign -->
+        <div class="calculator" id="card-inr-mbt">
+            <h2>INR Millions / Billions / Trillions → Crores + Foreign</h2>
+            <div class="description">
+                <p>Enter an INR amount in Millions, Billions, or Trillions to see the equivalent in Indian Rupees (Crores) and in USD, AUD, SGD, and GBP.</p>
+                <p class="hint">1 Million INR = 0.1 Cr &nbsp;|&nbsp; 1 Billion INR = 100 Cr &nbsp;|&nbsp; 1 Trillion INR = 1,00,000 Cr</p>
+            </div>
+            <form id="inrMbtForm">
+                <label>Amount &amp; Unit (INR):</label>
+                <div class="input-row">
+                    <input type="number" id="inrMbtAmount" min="0" step="any" placeholder="e.g. 500" required>
+                    <select id="inrMbtUnit">
+                        <option value="million">Million</option>
+                        <option value="billion">Billion</option>
+                        <option value="trillion">Trillion</option>
+                    </select>
+                </div>
+                <button type="submit">Convert</button>
+            </form>
+            <div id="inrMbtResult"></div>
+        </div>
+
     </div>
 
     <script>
         // Tab switching (mobile only)
         const cards = [
             document.getElementById('card-inr-to-foreign'),
-            document.getElementById('card-foreign-to-inr')
+            document.getElementById('card-foreign-to-inr'),
+            document.getElementById('card-inr-mbt')
         ];
         function switchTab(idx) {
             cards.forEach((c, i) => c.classList.toggle('tab-active', i === idx));
@@ -256,6 +280,51 @@
                         Raw: ₹ ${Math.round(inrRaw).toLocaleString('en-IN')}
                     </div>
                 </div>`;
+        });
+
+        // INR Millions / Billions / Trillions → INR Crores + Foreign
+        document.getElementById('inrMbtForm').addEventListener('submit', function (e) {
+            e.preventDefault();
+            const resultEl = document.getElementById('inrMbtResult');
+            if (!rates) { resultEl.innerHTML = '<p class="err">Rates not loaded yet — please wait a moment.</p>'; return; }
+
+            const amount = parseFloat(document.getElementById('inrMbtAmount').value);
+            const unit = document.getElementById('inrMbtUnit').value;
+
+            if (isNaN(amount) || amount <= 0) {
+                resultEl.innerHTML = '<p class="err">Please enter a valid positive number.</p>';
+                return;
+            }
+
+            const multiplierMap = { million: 1e6, billion: 1e9, trillion: 1e12 };
+            const inrRaw = amount * multiplierMap[unit];
+            const crores = inrRaw / 1e7;
+            const lakhs = inrRaw / 1e5;
+
+            const unitLabel = { million: 'Million', billion: 'Billion', trillion: 'Trillion' }[unit];
+            const unitLabelPlural = amount !== 1 ? unitLabel + 's' : unitLabel;
+
+            const foreignCards = ['USD', 'AUD', 'SGD', 'GBP'].map(cur => {
+                const foreignRaw = inrRaw * rates[cur];
+                const millions = foreignRaw / 1e6;
+                const billions = foreignRaw / 1e9;
+                return `
+                    <div class="result-card">
+                        <div class="cur-label">${curNames[cur]}<br>(${cur})</div>
+                        <div class="val-millions">${millions.toLocaleString('en-US', { maximumFractionDigits: 3 })} M</div>
+                        <div class="val-billions">${billions.toLocaleString('en-US', { maximumFractionDigits: 6 })} B</div>
+                    </div>`;
+            }).join('');
+
+            resultEl.innerHTML = `
+                <p class="summary-line">₹ ${amount.toLocaleString('en-IN')} INR ${unitLabelPlural} equals:</p>
+                <div class="result-box" style="margin-bottom:14px;">
+                    <div class="box-label">Indian Rupees</div>
+                    <div class="box-crores">₹ ${crores.toLocaleString('en-IN', { maximumFractionDigits: 2 })} Crores</div>
+                    <div class="box-sub">(₹ ${lakhs.toLocaleString('en-IN', { maximumFractionDigits: 2 })} Lakhs)</div>
+                </div>
+                <p class="summary-line" style="margin-bottom:8px;">Foreign currency equivalents:</p>
+                <div class="result-grid">${foreignCards}</div>`;
         });
 
         fetchRates();
